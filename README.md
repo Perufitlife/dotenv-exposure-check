@@ -99,3 +99,7 @@ Same active-probe philosophy across the stack, all MIT:
 ## License
 
 MIT © [Renzo Madueno](https://github.com/Perufitlife)
+
+---
+
+📚 Part of [**Awesome Backend Security Auditors**](https://github.com/Perufitlife/awesome-backend-security) — the full collection of keyless active-probe auditors.
