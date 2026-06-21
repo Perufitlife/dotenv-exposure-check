@@ -1,0 +1,37 @@
+{
+  "name": "dotenv-exposure-check",
+  "version": "0.1.0",
+  "description": "Probe a live URL for accidentally-served secret artifacts — .env, .env.production, .git/config, source maps (.js.map), .DS_Store, backup files — and CONFIRM each hit by fetching the bytes and flagging the real credentials and endpoints found inside. Zero dependencies.",
+  "type": "module",
+  "bin": {
+    "dotenv-exposure-check": "./scripts/cli.js"
+  },
+  "scripts": {
+    "scan": "node scripts/scan.js",
+    "test": "node test/scan.test.js"
+  },
+  "keywords": [
+    "dotenv",
+    "env",
+    "security",
+    "security-audit",
+    "secret-scanning",
+    "secrets-detection",
+    "exposure",
+    "sourcemap",
+    "auditor",
+    "devsecops",
+    "git-config",
+    "ds-store"
+  ],
+  "author": "Renzo Madueno (@Perufitlife)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Perufitlife/dotenv-exposure-check"
+  },
+  "homepage": "https://github.com/Perufitlife/dotenv-exposure-check",
+  "engines": {
+    "node": ">=18"
+  }
+}

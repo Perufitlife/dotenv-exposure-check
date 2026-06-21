@@ -1,0 +1,77 @@
+// HTML report renderer for dotenv-exposure-check. Self-contained, no deps.
+const esc = (s) =>
+  String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const SEV_COLOR = { critical: "#dc2626", high: "#f97316", medium: "#eab308", low: "#3b82f6", info: "#6b7280" };
+
+function evidenceLine(f) {
+  const e = f.evidence;
+  if (!e) return "";
+  if (f.check === "dotenv")
+    return `${e.var_count} variables readable${e.has_secrets ? ` — secret keys: ${esc((e.secret_keys || []).join(", "))}` : ""}`;
+  if (f.check === "git_config")
+    return e.kind === "config" ? `git config readable${e.remote_url ? ` — remote ${esc(e.remote_url)}` : ""}` : `git ${esc(e.kind)} readable`;
+  if (f.check === "sourcemap")
+    return `${e.source_files} source files mapped${e.embeds_source ? " (original source embedded)" : ""}`;
+  if (f.check === "ds_store") return `valid .DS_Store (${e.bytes} bytes) — directory listing leaked`;
+  if (f.check === "backup_dump") return `${esc(e.format)} artifact downloadable (${e.bytes} bytes)`;
+  return "";
+}
+
+export function renderHtml(result) {
+  const { target_url, summary, findings, active_probe } = result;
+  const total = findings.filter((f) => f.confirmed).length;
+  const score = Math.max(
+    0,
+    100 - (summary.critical * 25 + summary.high * 12 + summary.medium * 5 + summary.low * 1)
+  );
+
+  const rows = findings
+    .filter((f) => f.confirmed)
+    .map(
+      (f) => `
+    <div style="border-left:4px solid ${SEV_COLOR[f.severity]};background:#fff;padding:14px 18px;border-radius:6px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.06)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong>${esc(f.title)}</strong>
+        <span style="background:${SEV_COLOR[f.severity]};color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;text-transform:uppercase">${f.severity}</span>
+      </div>
+      <div style="color:#374151;font-size:14px;margin:6px 0">${esc(f.explain)}</div>
+      <div style="font-size:13px;color:#6b7280"><code>${esc(f.target)}</code></div>
+      <div style="font-size:12px;color:#b91c1c;margin-top:4px">✓ CONFIRMED by fetching the bytes — ${esc(evidenceLine(f))}</div>
+      <details style="margin-top:6px"><summary style="cursor:pointer;font-size:13px;font-weight:600;color:#047857">Fix</summary>
+        <div style="font-size:13px;background:#f0fdf4;padding:8px;border-radius:4px;margin-top:4px">${esc(f.fix || "")}</div></details>
+    </div>`
+    )
+    .join("");
+
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>dotenv-exposure-check report — ${esc(target_url)}</title>
+<style>body{font-family:system-ui,-apple-system,sans-serif;background:#f3f4f6;margin:0;color:#111827}
+.wrap{max-width:860px;margin:0 auto;padding:24px}.card{background:#fff;padding:18px;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.06);margin-bottom:18px}
+.stat{display:inline-block;text-align:center;margin-right:24px}.stat .n{font-size:30px;font-weight:700}.stat .l{font-size:12px;color:#6b7280}</style></head>
+<body><div class="wrap">
+  <h1 style="margin:8px 0">🔓 Secret Exposure Report</h1>
+  <div style="color:#6b7280;font-size:14px">${esc(target_url)} · scored ${score}/100 · ${active_probe.confirmed} artifact(s) confirmed live</div>
+  <div class="card" style="margin-top:14px">
+    <span class="stat"><div class="n" style="color:${SEV_COLOR.critical}">${summary.critical}</div><div class="l">CRITICAL</div></span>
+    <span class="stat"><div class="n" style="color:${SEV_COLOR.high}">${summary.high}</div><div class="l">HIGH</div></span>
+    <span class="stat"><div class="n" style="color:${SEV_COLOR.medium}">${summary.medium}</div><div class="l">MEDIUM</div></span>
+    <span class="stat"><div class="n">${active_probe.probed}</div><div class="l">PATHS PROBED</div></span>
+  </div>
+  ${total ? rows : `<div class="card">✅ No exposed secret artifacts confirmed in the paths probed. Re-run after each deploy.</div>`}
+  ${
+    summary.critical + summary.high > 0
+      ? `
+  <div class="card" style="background:#ecfdf5;border:1px solid #a7f3d0">
+    <h2 style="margin:0 0 6px">Want this fixed for you?</h2>
+    <p style="font-size:14px;color:#374151;margin:0 0 10px">You have <strong>${summary.critical} critical</strong> and <strong>${summary.high} high</strong> exposures. I verify each one live, help you rotate the leaked credentials, and send a written remediation report.</p>
+    <a href="https://buy.stripe.com/3cIeVdgikfj47yx9LkcAo0m" style="background:#047857;color:#fff;text-decoration:none;font-size:14px;padding:8px 14px;border-radius:6px">Fixed-scope audit — $99 / 24h</a>
+    <a href="https://github.com/Perufitlife/dotenv-exposure-check" style="color:#047857;font-size:14px;margin-left:10px">See the tool</a>
+  </div>`
+      : ""
+  }
+  <div style="text-align:center;font-size:12px;color:#9ca3af;padding:8px">
+    Generated by <a href="https://github.com/Perufitlife/dotenv-exposure-check" style="color:#047857">dotenv-exposure-check</a> · MIT · Runs locally, nothing leaves your machine.
+  </div>
+</div></body></html>`;
+}
